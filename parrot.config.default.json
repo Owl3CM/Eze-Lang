@@ -1,0 +1,6 @@
+{
+  "$schema": "./node_modules/eze-lang/dist/parrot.config.schema.json",
+  "languages": ["en", "ar"],
+  "defaultLanguage": "en",
+  "outputDir": "./parrot"
+}

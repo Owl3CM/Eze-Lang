@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "defaultLanguage": {
+      "type": "string"
+    },
+    "outputDir": {
+      "type": "string"
+    }
+  },
+  "required": ["languages", "defaultLanguage", "outputDir"]
+}

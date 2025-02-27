@@ -1,0 +1,80 @@
+{
+  "name": "eze-lang",
+  "version": "0.0.2",
+  "description": "eze-lang",
+  "main": "dist/index.js",
+  "source": "lib/index.ts",
+  "private": false,
+  "engines": {
+    "node": ">=14"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "rm -rf dist && rollup -c --exports auto && yarn build-scriptsTs",
+    "prod": "yarn build && node ./scripts/publish.js && git push",
+    "start": "vite",
+    "build-scriptsTs": "yarn tsc --build scripts.tsconfig.json",
+    "parrot": "node ./dist/parrot.js",
+    "just-test": "yarn build && node ./dist/build.js",
+    "test": "yarn build && start /B yarn parrot && yarn start",
+    "purge": "node ./dist/purge.js",
+    "test-purge": "yarn build-scriptsTs && node ./dist/purge.js",
+    "postinstall": "chmod +x ./dist/worker.js"
+  },
+  "bin": {
+    "parrot": "./dist/parrot.js"
+  },
+  "peerDependencies": {
+    "chokidar-cli": "^3.0.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.19.3",
+    "@rollup/plugin-commonjs": "^22.0.2",
+    "@rollup/plugin-node-resolve": "^14.1.0",
+    "@vitejs/plugin-react": "^3.1.0",
+    "babel-loader": "^8.2.5",
+    "chokidar": "^4.0.3",
+    "fs": "^0.0.1-security",
+    "js-yaml": "^4.1.0",
+    "rollup": "^3.29.1",
+    "rollup-plugin-peer-deps-external": "^2.2.4",
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-typescript2": "^0.34.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.8.4",
+    "vite": "^4.2.1"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "keywords": [
+    "eze-lang",
+    "eze",
+    "lang",
+    "language",
+    "translation",
+    "localization",
+    "i18n",
+    "internationalization"
+  ],
+  "tags": [],
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Owl3CM/Eze-Lang.git"
+  },
+  "homepage": "https://github.com/Owl3CM/Eze-Lang",
+  "bugs": {
+    "url": "https://github.com/Owl3CM/Eze-Lang/issues"
+  },
+  "license": "MIT"
+}
