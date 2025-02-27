@@ -1,6 +1,6 @@
 {
   "name": "eze-lang",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "eze-lang",
   "main": "dist/index.js",
   "source": "lib/index.ts",
@@ -10,7 +10,9 @@
   },
   "type": "module",
   "scripts": {
-    "build": "rm -rf dist && rollup -c --exports auto && yarn build-scriptsTs",
+    "copy-config": "cp -r ./parrot.config.default.json ./dist/parrot.config.default.json",
+    "copy-config-schema": " cp -r ./parrot.config.schema.json ./dist/parrot.config.schema.json",
+    "build": "rm -rf dist && rollup -c --exports auto && yarn build-scriptsTs && yarn copy-config&& yarn copy-config-schema",
     "prod": "yarn build && node ./scripts/publish.js && git push",
     "start": "vite",
     "build-scriptsTs": "yarn tsc --build scripts.tsconfig.json",
