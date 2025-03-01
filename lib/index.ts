@@ -1,12 +1,111 @@
-import { ParrotConfig } from "../Parrot.Types";
+let _defaultParams = {} as {
+  [key: string]: string | number;
+};
+
+export const DefaultParams = {
+  replace: (params: { [key: PlaceholderKey]: string | number }) => {
+    _defaultParams = params;
+  },
+  get: () => {
+    return _defaultParams;
+  },
+  clear: () => {
+    _defaultParams = {};
+  },
+  update: (params: { [key: PlaceholderKey]: string | number }) => {
+    _defaultParams = { ..._defaultParams, ...params };
+  },
+  set: (key: PlaceholderKey, value: string | number) => {
+    _defaultParams[key] = value;
+  },
+  delete: (key: PlaceholderKey) => {
+    delete _defaultParams[key];
+  },
+};
 
 // Simple interpolation: replaces {key} with params[key]
 function interpolate(template: string, params: { [key: string]: string | number }): string {
   return template.replace(/{(.*?)}/g, (_, key) => {
-    const trimmedKey = key.trim();
-    return params[trimmedKey] !== undefined ? String(params[trimmedKey]) : `{${trimmedKey}}`;
+    const trimmedKey = key.trim() as string;
+
+    let val = params[trimmedKey];
+
+    if (val === undefined) val = _defaultParams[trimmedKey];
+    if (val !== undefined) return String(val);
+
+    return `{${trimmedKey}}`;
   });
 }
+
+export function SetLanguage(config: { Static: GroupObject; Dynamic: GroupObject }): ParrotConfig {
+  let parrot = {} as any;
+
+  Object.values(config.Static).forEach((groups: Group) => {
+    parrot = { ...parrot, ...groups };
+  });
+
+  Object.values(config.Dynamic).forEach((groups: Group) => {
+    Object.entries(groups).forEach(
+      ([key, node]: [
+        string,
+        {
+          value: string;
+          placeholders: string[];
+          parrotHolders: string[];
+          variants: { [key: string]: string };
+          conditions: { [key: string]: string };
+        }
+      ]) => {
+        if (!node.value) node.value = "";
+        if (node.variants) {
+          parrot[key] = (params: any) => {
+            const found = node.variants[params[node.placeholders[0]]];
+            return interpolate(found ?? node.value, params);
+          };
+        } else if (node.conditions) {
+          let conditionsFunctions = [] as any[];
+          Object.entries(node.conditions).forEach(([condition, template]) => {
+            try {
+              conditionsFunctions.push(
+                new Function(`params`, `return ${condition.replace(/{(.*?)}/g, (_, key) => `params.${key.trim()}`)} ? \`${template}\` : null`)
+              );
+            } catch (e) {
+              console.error(e);
+            }
+          });
+          parrot[key] = (params: any) => {
+            for (const func of conditionsFunctions) {
+              const f = func(params);
+              if (f) return interpolate(f, params);
+            }
+            return interpolate(node.value, params);
+          };
+        } else if (node.parrotHolders) {
+          parrot[key] = (params: any) => {
+            node.parrotHolders.forEach((k) => {
+              const val = parrot[params[k]];
+              params[k] = typeof val === "function" ? val(params) : val;
+            });
+            return interpolate(node.value, params);
+          };
+        } else
+          parrot[key] = (params: any) => {
+            return interpolate(node.value, params);
+          };
+      }
+    );
+  });
+
+  Parrot = parrot;
+  return parrot;
+}
+
+type ParrotConfig = {};
+type PlaceholderKey = string;
+
+let Parrot = {} as ParrotConfig;
+
+export default Parrot;
 
 type Group = {
   [key: string]: {
@@ -21,74 +120,6 @@ type Group = {
 type GroupObject = {
   [key: string]: Group;
 };
-
-const Parrot = {
-  create: (config: { Static: GroupObject; Dynamic: GroupObject }): ParrotConfig => {
-    // const config = lang === "en" ? enConfig : arConfig;
-    let parrot = {} as any;
-
-    Object.values(config.Static).forEach((groups: Group) => {
-      parrot = { ...parrot, ...groups };
-    });
-
-    Object.values(config.Dynamic).forEach((groups: Group) => {
-      Object.entries(groups).forEach(
-        ([key, node]: [
-          string,
-          {
-            value: string;
-            placeholders: string[];
-            parrotHolders: string[];
-            variants: { [key: string]: string };
-            conditions: { [key: string]: string };
-          }
-        ]) => {
-          if (!node.value) node.value = "";
-          if (node.variants) {
-            parrot[key] = (params: any) => {
-              const found = node.variants[params[node.placeholders[0]]];
-              return interpolate(found ?? node.value, params);
-            };
-          } else if (node.conditions) {
-            let conditionsFunctions = [] as any[];
-            Object.entries(node.conditions).forEach(([condition, template]) => {
-              try {
-                conditionsFunctions.push(
-                  new Function(`params`, `return ${condition.replace(/{(.*?)}/g, (_, key) => `params.${key.trim()}`)} ? \`${template}\` : null`)
-                );
-              } catch (e) {
-                console.error(e);
-              }
-            });
-            parrot[key] = (params: any) => {
-              for (const func of conditionsFunctions) {
-                const f = func(params);
-                if (f) return interpolate(f, params);
-              }
-              return interpolate(node.value, params);
-            };
-          } else if (node.parrotHolders) {
-            parrot[key] = (params: any) => {
-              node.parrotHolders.forEach((k) => {
-                const val = parrot[params[k]];
-                params[k] = typeof val === "function" ? val(params) : val;
-              });
-              return interpolate(node.value, params);
-            };
-          } else
-            parrot[key] = (params: any) => {
-              return interpolate(node.value, params);
-            };
-        }
-      );
-    });
-
-    return parrot as ParrotConfig;
-  },
-};
-
-export default Parrot;
-
 // // CreateParrot.ts
 
 // import { LanguageKey, Translations, translations } from "@/translations";

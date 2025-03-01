@@ -56,7 +56,6 @@ const getDefaultYml = (config) => `actions:
   ISO:
     desc: The ISO action
     value: ${config.defaultLanguage}
-  
   zero:
     desc: The zero action
     value: Zero

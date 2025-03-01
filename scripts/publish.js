@@ -19,7 +19,6 @@ async function run() {
   }
   // const removeDist = "rm -rf dist ";
   // const buildDist = "yarn build";
-  // const copyConfig = "cp ./moonconfig.json ./dist/moonconfig.json";
   const addComent = "git add .";
   const publish = `yarn publish --new-version ${version} --access public`;
   // const gitStage = `git commit -m "v ${version}"`;
