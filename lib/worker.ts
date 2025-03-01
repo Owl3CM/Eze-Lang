@@ -452,9 +452,7 @@ function generateTypes(blueprint: Blueprint): string {
 // Generate index content
 function generateIndexContent(config): string {
   return `${config.languages.map((lang) => `import ${lang}Config from "./${lang}.json";`).join("\n")}
-      
-
-    const GetLanguageConfig = (lang: ${config.languages.map((lang) => `"${lang}"`).join(" | ")}): ParrotConfig => {
+    const GetLanguageConfig = (lang: ${config.languages.map((lang) => `"${lang}"`).join(" | ")}) => {
        switch (lang) {
           ${config.languages.map((lang) => `case "${lang}": return ${lang}Config;`).join("\n")}
           default: return ${config.defaultLanguage}Config;
@@ -515,7 +513,8 @@ async function main(): Promise<void> {
 
     // 3) Generate `Types.ts` file
     const typesContent = generateTypes(mergedBlueprint);
-    const typesPath = path.join(config.outputDir, "Parrot.Types.ts");
+    // const typesPath = path.join(config.outputDir, "Parrot.Types.ts");
+    const typesPath = path.join("Parrot.Types.ts");
     fs.writeFileSync(typesPath, typesContent, "utf8");
 
     const indexContent = generateIndexContent(config);
@@ -523,8 +522,8 @@ async function main(): Promise<void> {
     fs.writeFileSync(indexPath, indexContent);
 
     // 4) Generate eze-lang.d.ts
-    const ezeLangPath = path.join(config.outputDir, "eze-lang.d.ts");
-    fs.writeFileSync(ezeLangPath, ezeLangTypes, "utf8");
+    // const ezeLangPath = path.join(config.outputDir, "eze-lang.d.ts");
+    // fs.writeFileSync(ezeLangPath, ezeLangTypes, "utf8");
 
     // 4) Format output directory with Prettier (optional)
     try {

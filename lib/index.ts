@@ -1,3 +1,4 @@
+import { ParrotConfig, ParrotKey, PlaceholderKey } from "../Parrot.Types";
 let _defaultParams = {} as {
   [key: string]: string | number;
 };
@@ -37,10 +38,17 @@ function interpolate(template: string, params: { [key: string]: string | number 
   });
 }
 
-export function SetLanguage(config: { Static: GroupObject; Dynamic: GroupObject }): ParrotConfig {
+export function SetLanguage(config: {
+  Static: {
+    [key: string]: {
+      [key: string]: string | number;
+    };
+  };
+  Dynamic: GroupObject;
+}): ParrotConfig {
   let parrot = {} as any;
 
-  Object.values(config.Static).forEach((groups: Group) => {
+  Object.values(config.Static).forEach((groups) => {
     parrot = { ...parrot, ...groups };
   });
 
@@ -96,16 +104,8 @@ export function SetLanguage(config: { Static: GroupObject; Dynamic: GroupObject 
     );
   });
 
-  Parrot = parrot;
   return parrot;
 }
-
-type ParrotConfig = {};
-type PlaceholderKey = string;
-
-let Parrot = {} as ParrotConfig;
-
-export default Parrot;
 
 type Group = {
   [key: string]: {
