@@ -329,13 +329,36 @@ function App() {
 
       {/* Custom Messages Section */}
       <section>
-        <h2>Custom Messages</h2>
-        <p>
+    <h2>Custom Messages</h2>
+        <h3>Using Static</h3>
+        <p >
           {Parrot.customMessage({
-            detail: "Operation failed",
-            action: "upload",
-            becauseOf: "becauseOf",
-            user: "John"
+            startParrotAction: "upload",
+            endParrotAction: "download",
+            anyText: "and",
+          })}
+        </p>
+        <h3>Using Dynamic</h3>
+        <p >
+          {Parrot.customMessage({
+            startParrotAction: "becauseOf",
+            endParrotAction: "tryAgain",
+            anyText: "SOME CUSTOM TEXT",
+            // now Ts will force you to add {becauseOf} params which is {user}
+            user: "John",
+          })}
+        </p>
+        <p >
+          {Parrot.customMessage({
+            anyText: ",",
+            startParrotAction: "becauseOf",
+            // now Ts will force you to add {becauseOf} params which is {user}
+            user: "John",
+
+            endParrotAction: "failed",
+            // now Ts will force you to add {failed} params which is {action} and {detail}
+            action: "download",
+            detail: "Image URL",
           })}
         </p>
       </section>

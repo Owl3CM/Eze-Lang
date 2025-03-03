@@ -18,12 +18,15 @@ export const Watcher = async (once) => {
   let config = JSON.parse(await readFile(configPath));
   const ymlPath = `${config.outputDir}/yml`;
   if (!(await fileExists(config.outputDir))) {
-    createFolder(`${config.outputDir}`);
+    await createFolder(`${config.outputDir}`);
   }
   if (!(await fileExists(ymlPath))) {
-    createFolder(ymlPath, {
-      default: { name: "actions.yml", content: getDefaultYml(config) },
-    });
+    await createFolder(
+      ymlPath,
+      Object.entries(ymls).map(([name, content]) => {
+        return { name: `${name}.yml`, content: content(config) };
+      })
+    );
     exec(`node ${packagePath}/worker.js`);
   } else if (once) {
     exec(`node ${packagePath}/worker.js`);
@@ -52,83 +55,87 @@ export const Watcher = async (once) => {
     process.exit();
   });
 };
-const getDefaultYml = (config) => `actions:
-  ISO:
-    desc: The ISO action
-    value: ${config.defaultLanguage}
+
+const ymls = {
+  default: (config) => `
+ISO:
+  desc: The ISO action
+  value: ${config.defaultLanguage}
+`,
+  actions: (config) => `
+upload:
+  desc: "Action for uploading a file"
+  value: "Upload File"
+
+download:
+  desc: "Action for downloading a file"
+  value: "Download File"
+
+search:
+  desc: "Search action with a query"
+  placeholders: query
+  value: "Searching for '{query}'..."`,
+  errors: (config) =>
+    `
+serverError:
+  desc: "Generic server error message"
+  value: "A server error occurred. Please try again later."
+
+errorWhile:
+  desc: "Error message with a dynamic action"
+  placeholders: action
+  value: "An error occurred while {action}"
+
+errorWithDetail:
+  desc: "Nested key lookup error message using parrotHolders"
+  parrotHolders: action
+  value: "Failed to perform {action}"`,
+
+  greetings: (config) => `
+greeting:
+  desc: "Basic greeting with variants based on gender"
+  placeholders: gender, name
+  value: "Hello {name}"
+  variants:
+    male: "Hello Mr. {name}"
+    female: "Hello Ms. {name}"
+    default: "Hello {name}"
   
-  zero:
-    desc: The zero action
-    value: Zero
+genderGreeting:
+  desc: "Greeting with multi-conditions based on gender and name"
+  placeholders: gender, name
+  value: "Hi {name}"
+  conditions:
+    "{gender} === 'female' && {name} === 'Alice'": "Welcome, Queen Alice!"
+    "{gender} === 'male'": "Greetings, Sir {name}"
+    "{gender} === 'female'": "Greetings, Lady {name}"`,
+  itemsCount: (config) => `
+itemCount:
+  desc: "Displays item count with context-aware messages"
+  placeholders: count
+  value: "{count} items available"
+  conditions:
+    "{count} < 0": "Invalid count"
+    "{count} === 0": "No items available"
+    "{count} === 1": "One item available"
+    "{count} > 1 && {count} < 10": "A few items available"
+    "{count} >= 10 && {count} < 50": "Several items available"
+    "{count} >= 50": "Many items available"`,
+  custom: (config) => `
+failed:
+  desc: "Custom message combining dynamic elements"
+  placeholders: detail, action
+  value: "Failed to {action} {detail}"
+  
+becauseOf:
+  desc: "Provides a reason message"
+  placeholders: user
+  value: "because of {user}"
 
-  add:
-    desc: The add action
-    value: Add
-
-  upload:
-    desc: The upload action
-    value: Upload
-
-  download:
-    desc: The download action
-    value: Download
-
-  errorWhile:
-    desc: Error message template; 'action' describes what failed.
-    placeholders: action
-    value: An error occurred while {action}
-
-  errorWhileParrot:
-    desc: Error message template; 'action' describes what failed.
-    parrotHolders: action
-    value: An error occurred while {action}
-
-  parrotErrorWhileParrot:
-    desc: Error message template; 'action' describes what failed.
-    placeholders: action,count,gender,name
-    parrotHolders: genderParrotAction,countParrotAction
-    value: "{genderParrotAction} do you want {action} {countParrotAction}"
-
-  greeting:
-    desc: A greeting message with gender variants. Expects 'name' and optionally 'gender'.
-    placeholders: gender, name
-    value: Hello {name}
-    variants:
-      male: Hello Mr. {name}
-      female: Hello Ms. {name}
-      1: Hello Ms. One
-
-  genderGreeting:
-    desc: Greeting based on gender
-    placeholders: gender,name
-    value: Hello {name}
-    conditions:
-      "{gender} === 'female' && {name} === 'john'": Hello Ms. Doe
-      "{gender} === 'male'": Hello Mr. {name}
-      "{gender} === 'female'": Hello Ms. {name}
-
-  itemCount:
-    desc: Display item count based on number
-    placeholders: count
-    value: "{count} items"
-    conditions:
-      "{count} < 0": Negative items
-      "{count} === 0": No items
-      "{count} === 1": 1 item
-      "{count} < 10": Few items
-      "{count} <= 20": "Between 20 and 50 items"
-      "{count} < 50": Many items
-
-  remove:
-    value: Remove
-    desc: Action to remove an item
-
-  saving:
-    value: Saving
-    desc: Message displayed while saving
-
-  searchingFor:
-    desc: Search prompt; 'propName' is the property being searched.
-    placeholders: propName
-    value: Searching for {propName}
-`;
+customMessage:
+  desc: "Custom message combining dynamic elements from various sources"
+  placeholders: user,anyText
+  parrotHolders: detail, action, becauseOf
+  value: ".{becauseOf} {detail}, {anyText}"
+`,
+};
