@@ -9,3 +9,5 @@ export interface ParrotConfig extends ParrotStatic, ParrotDynamic {}
 export type ParrotKey = keyof ParrotConfig;
 
 export type PlaceholderKey = string;
+
+export type VariantKey = string;

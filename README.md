@@ -21,7 +21,10 @@
   Define variants to handle enum-like situations—using the first placeholder as the key for the variant. Use conditions for numeric ranges or multiple criteria, ensuring your UI displays user-friendly messages in every situation.
 
 - **Default Parameters & Fallbacks:**  
-  Set fallback values via `DefaultParams` to gracefully handle missing placeholders. In cases where a key or placeholder isn’t found or when you want to define the gender for all translations that will use it, Eze-Lang leaves the placeholder intact, making debugging easier.
+  Set fallback values via `DefaultPlaceholders` to gracefully handle missing placeholders. In cases where a key or placeholder isn’t found, Eze-Lang leaves the placeholder intact, making debugging easier.
+
+- **Default Variants:**  
+  Set fallback values via `DefaultVariants` to gracefully handle missing variants. When a key or variant isn’t found, Eze-Lang leaves the variant intact, making debugging easier.
 
 - **Performance-Optimized:**  
   Precompiled interpolation and smart merging mean minimal runtime overhead, keeping your app fast.
@@ -44,13 +47,13 @@ npm install eze-lang
 yarn add eze-lang
 ```
 
----
+> **Note:** When you install and start your project, the parrot will auto-generate if there is no configuration. All YAML files in your project are processed as described below.
 
-<!-- add note here that when install it and start the project the parrot will auto generate if there is no config also add all the ymls from the readme file so you can use it direct -->
+---
 
 ## Quick Start
 
-1. **Add the vite plugin to your Vite configuration:**
+1. **Add the Vite plugin to your Vite configuration:**
 
 ```ts
 import { defineConfig } from "vite";
@@ -59,8 +62,8 @@ import parrotPlugin from "eze-lang/dist/vite-plugin-parrot";
 export default defineConfig({
   plugins: [
     // Add this line to your plugins array
-     parrotPlugin()
-  ], 
+    parrotPlugin()
+  ],
 });
 ```
 
@@ -70,25 +73,25 @@ export default defineConfig({
 npm run dev
 # or
 yarn dev
-# or any other command you use to start your project
 ```
+
 > **Note:** The Vite plugin automatically generates language-specific JSON files and TypeScript definitions when you start your project.
 
-1. **Use the generated `Parrot` object in your application:**
+3. **Use the generated `Parrot` object in your application:**
 
 ```tsx
-import { SetLanguage, DefaultParams } from "eze-lang";
+import { SetLanguage, DefaultPlaceholders, DefaultVariants, Parrot } from "eze-lang";
 import GetLanguageConfig from "./parrot/index";
 
 // Set default fallback parameters if needed
-DefaultParams.replace({ gender: "male" });
+DefaultPlaceholders.replace({ gender: "male" });
+DefaultVariants.replace({ gender: "male" });
 
 // Load the language configuration (using English for this example)
-const Parrot = SetLanguage(GetLanguageConfig("en") as any);
+SetLanguage(GetLanguageConfig("en") as any);
 
 // Use Parrot in your application
 console.log(Parrot.upload); // "Upload File"
-
 console.log(Parrot.search({ query: "projects" })); // "Searching for 'projects'..."
 
 console.log(Parrot.greeting({ name:"Jack" })); // "Hello Mr. Jack"
@@ -102,9 +105,71 @@ console.log(Parrot.itemCount({ count: 20 })); // "Several items available"
 console.log(Parrot.itemCount({ count: 75 })); // "Many items available"
 ```
 
+---
+
+## Components
+
+Eze-Lang provides React components for rendering both static and dynamic translations.
+
+### ParrotMixedComponent
+
+This component handles both static and dynamic keys. It automatically determines if a key is a function (dynamic) or a value (static) and renders accordingly.
+
+```tsx
+export function ParrotMixedComponent<K extends ParrotKey>(props: ParrotTextProps<K>) {
+  const { k, ...rest } = props as any;
+  //   @ts-ignore
+  const parrotEntry = Controller.Parrot[k];
+
+  if (typeof parrotEntry === "function") {
+    return parrotEntry(rest);
+  } else {
+    return parrotEntry;
+  }
+}
+```
+
+### ParrotStaticComponent
+
+This component is specifically for static keys, rendering the fixed string or number without additional parameters.
+
+```tsx
+export function ParrotStaticComponent<K extends StaticKeys>({ k }: { k: K }) {
+  return Controller.Parrot[k];
+}
+```
+
+### ParrotDynamicComponent
+
+This component is tailored for dynamic keys. It requires all the parameters specified for the dynamic translation.
+
+```tsx
+export function ParrotDynamicComponent<K extends DynamicKeys>(props: Parameters<ParrotDynamic[K]>[0]) {
+  const { k, ...rest } = props as any;
+  // @ts-ignore
+  return Controller.Parrot[k](rest);
+}
+```
+
+These components allow you to integrate localization into your React components seamlessly, ensuring type safety and autocompletion in your IDE.
+
+---
+
+## Library Index
+
+The library's entry point exports the Controller which holds the generated Parrot object.
+
+```ts
+import { Controller } from "./controller";
+
+export default Controller;
+```
+
+---
+
 ## Configuration
 
-`parrot.config.json` file will be generated in your project root. All YAML files must reside in a `yml` folder inside the specified `outputDir`.
+The `parrot.config.json` file is generated in your project root. All YAML files must reside in a `yml` folder inside the specified `outputDir`.
 
 ```json
 {
@@ -120,8 +185,6 @@ console.log(Parrot.itemCount({ count: 75 })); // "Many items available"
 ---
 
 ## YAML Blueprint Examples
-
-Below are several example YAML files with real-world scenarios, inline usage examples, and expected outputs.
 
 ### 1. Actions (`actions.yml`)
 
@@ -143,8 +206,8 @@ search:
 **Usage & Expected Output:**
 
 ```js
-console.log(Parrot.upload);                // "Upload File"
-console.log(Parrot.download);              // "Download File"
+console.log(Parrot.upload);                  // "Upload File"
+console.log(Parrot.download);                // "Download File"
 console.log(Parrot.search({ query: "docs" })); // "Searching for 'docs'..."
 ```
 
@@ -171,8 +234,8 @@ errorWithDetail:
 **Usage & Expected Output:**
 
 ```js
-console.log(Parrot.serverError); // "A server error occurred. Please try again later."
-console.log(Parrot.errorWhile({ action: "uploading" })); // "An error occurred while uploading"
+console.log(Parrot.serverError);               // "A server error occurred. Please try again later."
+console.log(Parrot.errorWhile({ action: "uploading" }));  // "An error occurred while uploading"
 console.log(Parrot.errorWithDetail({ action: "download" })); // "Failed to perform Download File"
 ```
 
@@ -203,16 +266,14 @@ genderGreeting:
 **Usage & Expected Output:**
 
 ```js
-console.log(Parrot.greeting({ gender: "male", name: "John" }));     // "Hello Mr. John"
-console.log(Parrot.greeting({ gender: "female", name: "Sarah" }));    // "Hello Ms. Sarah"
-console.log(Parrot.greeting({ gender: "default", name: "Alex" }));    // "Hello Alex"
+console.log(Parrot.greeting({ gender: "male", name: "John" }));      // "Hello Mr. John"
+console.log(Parrot.greeting({ gender: "female", name: "Sarah" }));     // "Hello Ms. Sarah"
+console.log(Parrot.greeting({ gender: "default", name: "Alex" }));     // "Hello Alex"
 
 console.log(Parrot.genderGreeting({ gender: "female", name: "Alice" })); // "Welcome, Queen Alice!"
 console.log(Parrot.genderGreeting({ gender: "male", name: "Robert" }));  // "Greetings, Sir Robert"
 console.log(Parrot.genderGreeting({ gender: "female", name: "Emma" }));  // "Greetings, Lady Emma"
 ```
-
-> **AI Insight:** Variants allow the translation system to automatically select the correct message variant based on the first placeholder (`gender` in this case). Multi-conditions add further flexibility by handling specific cases like special names.
 
 ---
 
@@ -235,15 +296,13 @@ itemCount:
 **Usage & Expected Output:**
 
 ```js
-console.log(Parrot.itemCount({ count: -1 }));  // "Invalid count"
-console.log(Parrot.itemCount({ count: 0 }));   // "No items available"
-console.log(Parrot.itemCount({ count: 1 }));   // "One item available"
-console.log(Parrot.itemCount({ count: 5 }));   // "A few items available"
-console.log(Parrot.itemCount({ count: 15 }));  // "Several items available"
-console.log(Parrot.itemCount({ count: 100 })); // "Many items available"
+console.log(Parrot.itemCount({ count: -1 }));   // "Invalid count"
+console.log(Parrot.itemCount({ count: 0 }));      // "No items available"
+console.log(Parrot.itemCount({ count: 1 }));      // "One item available"
+console.log(Parrot.itemCount({ count: 5 }));      // "A few items available"
+console.log(Parrot.itemCount({ count: 15 }));     // "Several items available"
+console.log(Parrot.itemCount({ count: 100 }));    // "Many items available"
 ```
-
-> **AI Insight:** Using conditions for numbers ensures that your messages are grammatically correct and contextually appropriate, which enhances the overall user experience.
 
 ---
 
@@ -275,30 +334,28 @@ console.log(Parrot.customMessage({
   startParrotAction: "upload",
   endParrotAction: "download",
   anyText: "and",
-}));//Upload File and Download File
+})); // "Upload File and Download File"
 
 // Using Dynamic keys
 console.log(Parrot.customMessage({
-  endParrotAction: "tryAgain",
-  anyText: "SOME_CUSTOM_TEXT",
   startParrotAction: "becauseOf",
-  // now Ts will force you to add {becauseOf} params which is {user}
+  endParrotAction: "tryAgain",
+  anyText: "SOME CUSTOM TEXT",
+  // now TS will force you to add {becauseOf} params which is {user}
   user: "John",
-}));//because of John SOME_CUSTOM_TEXT Please try again
+})); // "because of John SOME CUSTOM TEXT Please try again"
 
 console.log(Parrot.customMessage({
   anyText: ",",
   startParrotAction: "becauseOf",
-  // now Ts will force you to add {becauseOf} params which is {user}
-  user: "John",  
+  // now TS will force you to add {becauseOf} params which is {user}
+  user: "John",
   endParrotAction: "failed",
-  // now Ts will force you to add {failed} params which is {action} and {detail}
+  // now TS will force you to add {failed} params which is {action} and {detail}
   action: "download",
-  detail: "SOME_CUSTOM_TEXT",
-}));// Expected output: "because of John , Failed to download SOME_CUSTOM_TEXT"
+  detail: "Image URL",
+})); // Expected output: "because of John , Failed to download Image URL"
 ```
-
-> **AI Insight:** Composite messages demonstrate the power of combining dynamic translations. The use of parrotHolders allows one message to pull in and compose parts from another, ensuring consistency and reusability.
 
 ---
 
@@ -319,8 +376,6 @@ console.log(Parrot.customMessage({
 ---
 
 ## Vite Integration Example
-
-Below is an example Vite configuration integrating Eze-Lang:
 
 ```ts
 import { defineConfig } from "vite";
@@ -344,13 +399,16 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import GetLanguageConfig from "../parrot/index";
-import { SetLanguage, DefaultParams } from "eze-lang";
+import { SetLanguage, DefaultPlaceholders, DefaultVariants, Parrot } from "eze-lang";
 
 // Set default fallback parameters if needed
-DefaultParams.replace({ gender: "default" });
+DefaultPlaceholders.replace({ name: "Am Default Name!!" });
+
+// Set default fallback variants
+DefaultVariants.replace({ gender: "male" });
 
 // Load the language configuration (using English for this example)
-const Parrot = SetLanguage(GetLanguageConfig("en") as any);
+SetLanguage(GetLanguageConfig("en") as any);
 
 function App() {
   return (
@@ -392,9 +450,9 @@ function App() {
 
       {/* Custom Messages Section */}
       <section>
-    <h2>Custom Messages</h2>
+        <h2>Custom Messages</h2>
         <h3>Using Static</h3>
-        <p >
+        <p>
           {Parrot.customMessage({
             startParrotAction: "upload",
             endParrotAction: "download",
@@ -402,24 +460,23 @@ function App() {
           })}
         </p>
         <h3>Using Dynamic</h3>
-        <p >
+        <p>
           {Parrot.customMessage({
             startParrotAction: "becauseOf",
             endParrotAction: "tryAgain",
             anyText: "SOME CUSTOM TEXT",
-            // now Ts will force you to add {becauseOf} params which is {user}
+            // now TS will force you to add {becauseOf} params which is {user}
             user: "John",
           })}
         </p>
-        <p >
+        <p>
           {Parrot.customMessage({
             anyText: ",",
             startParrotAction: "becauseOf",
-            // now Ts will force you to add {becauseOf} params which is {user}
+            // now TS will force you to add {becauseOf} params which is {user}
             user: "John",
-
             endParrotAction: "failed",
-            // now Ts will force you to add {failed} params which is {action} and {detail}
+            // now TS will force you to add {failed} params which is {action} and {detail}
             action: "download",
             detail: "Image URL",
           })}
@@ -429,15 +486,12 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root") as HTMLElement).render(
+createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <App />
   </BrowserRouter>
 );
 ```
-
-> **Developer Note:**  
-> While this example is focused on React, Eze-Lang works in any JavaScript/TypeScript environment. Its robust TypeScript definitions and runtime efficiency make it a powerful choice for all localization needs.
 
 ---
 
@@ -453,4 +507,3 @@ Eze-Lang empowers developers by:
 
 Eze-Lang is crafted to make localization intuitive, efficient, and enjoyable. Dive in and experience a smoother workflow for managing translations in your projects!
 
-*As an AI, I see Eze-Lang as a powerful tool that bridges dynamic localization requirements with excellent developer ergonomics. It leverages modern TypeScript capabilities to ensure type safety while delivering a flexible, high-performance runtime that stands out among localization solutions. Happy localizing with Eze-Lang!*

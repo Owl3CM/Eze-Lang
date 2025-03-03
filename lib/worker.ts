@@ -204,7 +204,8 @@ function processNode(node: BlueprintNode, lang: string, defaultLang: string): an
  * Converts a merged `Blueprint` into a `FlattenedResult`
  * keyed by (group -> key) and separates them into Static/Dynamic.
  */
-let _allPlaceholders = {};
+let _allPlaceholdersKeys = {};
+let _allVariantsKeys = {};
 
 function flattenBlueprint(blueprint: Blueprint, lang: string, defaultLang: string): FlattenedResult {
   const processedResult: Record<string, Record<string, any>> = {};
@@ -258,8 +259,9 @@ function flattenBlueprint(blueprint: Blueprint, lang: string, defaultLang: strin
           }
         ]) => {
           if (node.placeholders) {
-            node.placeholders.forEach((phKey) => {
-              _allPlaceholders[phKey] = true;
+            node.placeholders.forEach((phKey, i) => {
+              if (i === 0 && node.variants?.length) _allVariantsKeys[phKey] = true;
+              else _allPlaceholdersKeys[phKey] = true;
             });
           }
         }
@@ -472,6 +474,9 @@ function generateTypes(blueprint) {
   output += `export interface ParrotDynamic {\n${dynamicType}}\n\n`;
   output += `export interface ParrotConfig extends ParrotStatic, ParrotDynamic {}\n\n`;
   output += `export type ParrotKey = keyof ParrotConfig;\n`;
+  output += `export type PlaceholderKey = "${Object.keys(_allPlaceholdersKeys).join('"|"')}";\n`;
+  output += `export type VariantKey = "${Object.keys(_allVariantsKeys).join('"|"')}";\n`;
+
   return output;
 }
 // Generate index content
