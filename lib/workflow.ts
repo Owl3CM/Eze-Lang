@@ -57,13 +57,11 @@ export const Watcher = async (once) => {
 };
 
 const ymls = {
-  default: (config) => `
-ISO:
+  default: (config) => `ISO:
   desc: The ISO action
   value: ${config.defaultLanguage}
 `,
-  actions: (config) => `
-upload:
+  actions: (config) => `upload:
   desc: "Action for uploading a file"
   value: "Upload File"
 
@@ -74,10 +72,13 @@ download:
 search:
   desc: "Search action with a query"
   placeholders: query
-  value: "Searching for '{query}'..."`,
-  errors: (config) =>
-    `
-serverError:
+  value: "Searching for '{query}'..."
+
+tryAgain:
+  desc: "Prompt to try again"
+  value: "Please try again"
+`,
+  errors: (config) => `serverError:
   desc: "Generic server error message"
   value: "A server error occurred. Please try again later."
 
@@ -91,8 +92,7 @@ errorWithDetail:
   parrotHolders: action
   value: "Failed to perform {action}"`,
 
-  greetings: (config) => `
-greeting:
+  greetings: (config) => `greeting:
   desc: "Basic greeting with variants based on gender"
   placeholders: gender, name
   value: "Hello {name}"
@@ -109,8 +109,7 @@ genderGreeting:
     "{gender} === 'female' && {name} === 'Alice'": "Welcome, Queen Alice!"
     "{gender} === 'male'": "Greetings, Sir {name}"
     "{gender} === 'female'": "Greetings, Lady {name}"`,
-  itemsCount: (config) => `
-itemCount:
+  itemsCount: (config) => `itemCount:
   desc: "Displays item count with context-aware messages"
   placeholders: count
   value: "{count} items available"
@@ -121,12 +120,11 @@ itemCount:
     "{count} > 1 && {count} < 10": "A few items available"
     "{count} >= 10 && {count} < 50": "Several items available"
     "{count} >= 50": "Many items available"`,
-  custom: (config) => `
-failed:
+  custom: (config) => `failed:
   desc: "Custom message combining dynamic elements"
   placeholders: detail, action
   value: "Failed to {action} {detail}"
-  
+
 becauseOf:
   desc: "Provides a reason message"
   placeholders: user
@@ -134,8 +132,8 @@ becauseOf:
 
 customMessage:
   desc: "Custom message combining dynamic elements from various sources"
-  placeholders: user,anyText
-  parrotHolders: detail, action, becauseOf
-  value: ".{becauseOf} {detail}, {anyText}"
+  placeholders: anyText
+  parrotHolders: startParrotAction,endParrotAction
+  value: "{startParrotAction} {anyText} {endParrotAction}"
 `,
 };

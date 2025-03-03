@@ -46,9 +46,65 @@ yarn add eze-lang
 
 ---
 
+<!-- add note here that when install it and start the project the parrot will auto generate if there is no config also add all the ymls from the readme file so you can use it direct -->
+
+## Quick Start
+
+1. **Add the vite plugin to your Vite configuration:**
+
+```ts
+import { defineConfig } from "vite";
+import parrotPlugin from "eze-lang/dist/vite-plugin-parrot";
+
+export default defineConfig({
+  plugins: [
+    // Add this line to your plugins array
+     parrotPlugin()
+  ], 
+});
+```
+
+2. **Run your project:**
+
+```bash
+npm run dev
+# or
+yarn dev
+# or any other command you use to start your project
+```
+> **Note:** The Vite plugin automatically generates language-specific JSON files and TypeScript definitions when you start your project.
+
+1. **Use the generated `Parrot` object in your application:**
+
+```tsx
+import { SetLanguage, DefaultParams } from "eze-lang";
+import GetLanguageConfig from "./parrot/index";
+
+// Set default fallback parameters if needed
+DefaultParams.replace({ gender: "male" });
+
+// Load the language configuration (using English for this example)
+const Parrot = SetLanguage(GetLanguageConfig("en") as any);
+
+// Use Parrot in your application
+console.log(Parrot.upload); // "Upload File"
+
+console.log(Parrot.search({ query: "projects" })); // "Searching for 'projects'..."
+
+console.log(Parrot.greeting({ name:"Jack" })); // "Hello Mr. Jack"
+// or overwrite the default gender
+console.log(Parrot.greeting({ gender:"female", name:"Jack" })); // "Hello Ms. Jack"
+    
+console.log(Parrot.itemCount({ count: 0 })); // "No items available"  
+console.log(Parrot.itemCount({ count: 1 })); // "One item available"
+console.log(Parrot.itemCount({ count: 5 })); // "A few items available"
+console.log(Parrot.itemCount({ count: 20 })); // "Several items available"
+console.log(Parrot.itemCount({ count: 75 })); // "Many items available"
+```
+
 ## Configuration
 
-Create a `parrot.config.json` file in your project root. All YAML files must reside in a `yml` folder inside the specified `outputDir`.
+`parrot.config.json` file will be generated in your project root. All YAML files must reside in a `yml` folder inside the specified `outputDir`.
 
 ```json
 {
@@ -198,7 +254,7 @@ failed:
   desc: "Custom message combining dynamic elements"
   placeholders: detail, action
   value: "Failed to {action} {detail}"
-  
+
 becauseOf:
   desc: "Provides a reason message"
   placeholders: user
@@ -206,23 +262,40 @@ becauseOf:
 
 customMessage:
   desc: "Custom message combining dynamic elements from various sources"
-  placeholders: user,anyText
-  parrotHolders: detail, action, becauseOf
-  value: ".{becauseOf} {detail}, {anyText}"
+  placeholders: anyText
+  parrotHolders: startParrotAction,endParrotAction
+  value: "{startParrotAction} {anyText} {endParrotAction}"
 ```
 
 **Usage & Expected Output:**
 
-
-
 ```js
+// Use Static keys
 console.log(Parrot.customMessage({
-  detail: "Operation failed",
-  action: "upload",
-  becauseOf: "becauseOf",
-  user: "John"
-}));
-// Expected output: ".because of John Operation failed"
+  startParrotAction: "upload",
+  endParrotAction: "download",
+  anyText: "and",
+}));//Upload File and Download File
+
+// Using Dynamic keys
+console.log(Parrot.customMessage({
+  endParrotAction: "tryAgain",
+  anyText: "SOME_CUSTOM_TEXT",
+  startParrotAction: "becauseOf",
+  // now Ts will force you to add {becauseOf} params which is {user}
+  user: "John",
+}));//because of John SOME_CUSTOM_TEXT Please try again
+
+console.log(Parrot.customMessage({
+  anyText: ",",
+  startParrotAction: "becauseOf",
+  // now Ts will force you to add {becauseOf} params which is {user}
+  user: "John",  
+  endParrotAction: "failed",
+  // now Ts will force you to add {failed} params which is {action} and {detail}
+  action: "download",
+  detail: "SOME_CUSTOM_TEXT",
+}));// Expected output: "because of John , Failed to download SOME_CUSTOM_TEXT"
 ```
 
 > **AI Insight:** Composite messages demonstrate the power of combining dynamic translations. The use of parrotHolders allows one message to pull in and compose parts from another, ensuring consistency and reusability.
@@ -251,20 +324,10 @@ Below is an example Vite configuration integrating Eze-Lang:
 
 ```ts
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import parrotPlugin from "eze-lang/dist/vite-plugin-parrot";
 
 export default defineConfig({
-  plugins: [react(), parrotPlugin()],
-  server: {
-    host: "localhost",
-    port: 3000,
-  },
-  resolve: {
-    alias: {
-      "@": "/src",
-    },
-  },
+  plugins: [parrotPlugin()],
 });
 ```
 
