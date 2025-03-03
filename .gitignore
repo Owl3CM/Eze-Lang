@@ -6,6 +6,8 @@
 # testing
 /coverage
 
+/hide
+
 # production
 /build
 

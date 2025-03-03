@@ -1,4 +1,4 @@
-import { ParrotConfig, ParrotKey, PlaceholderKey } from "../Parrot.Types";
+import { ParrotConfig, PlaceholderKey } from "../Parrot.Types";
 let _defaultParams = {} as {
   [key: string]: string | number;
 };
@@ -67,7 +67,7 @@ export function SetLanguage(config: {
         if (!node.value) node.value = "";
         if (node.variants) {
           parrot[key] = (params: any) => {
-            const found = node.variants[params[node.placeholders[0]]];
+            const found = node.variants[params[node.placeholders[0]] ?? _defaultParams[node.placeholders[0]]];
             return interpolate(found ?? node.value, params);
           };
         } else if (node.conditions) {

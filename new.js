@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 /**
  * -----------------------------------------
  *  Imports
@@ -10,66 +9,17 @@ import path from "path";
 import yaml from "js-yaml";
 import { execSync } from "child_process";
 import { readFile } from "./helpers/owlFs.js";
-
-/**
- * -----------------------------------------
- *  Type Definitions
- * -----------------------------------------
- */
-
-/**
- * The main configuration shape from `parrot.config.json`.
- */
-interface ParrotConfig {
-  languages: string[];
-  defaultLanguage: string;
-  outputDir: string;
-  ymlDir: string;
-}
-
-/**
- * A node in the blueprint.
- * Extend or refine types if you have stricter schemas.
- */
-interface BlueprintNode {
-  desc?: string;
-  value?: string;
-  // can be either "foo,bar" or ["foo", "bar"]
-  placeholders?: string;
-  parrotHolders?: string;
-  conditions?: Record<string, string>;
-  variants?: Record<string, string>;
-}
-
-/**
- * A blueprint is an object whose keys are "groups,"
- * each containing a map of "key => BlueprintNode".
- */
-interface Blueprint {
-  [group: string]: Record<string, BlueprintNode>;
-}
-
-/**
- * The flattened structure separates placeholders (Dynamic) from simple strings (Static).
- */
-interface FlattenedResult {
-  Static: Record<string, Record<string, any>>;
-  Dynamic: Record<string, Record<string, any>>;
-}
-
 /**
  * -----------------------------------------
  *  1. Configuration & Setup
  * -----------------------------------------
  */
-
 /**
  * Safely loads and returns the user config from `parrot.config.json`.
  * If not found or invalid, returns a default config.
  */
 const configPath = "./parrot.config.json";
-
-async function loadUserConfig(): Promise<ParrotConfig> {
+async function loadUserConfig() {
   const config = await readFile(configPath);
   return JSON.parse(config);
   //   try {
@@ -86,35 +36,31 @@ async function loadUserConfig(): Promise<ParrotConfig> {
   //     // };
   //   }
 }
-
 /**
  * Ensures the output directory exists. Creates it if not found.
  */
-function ensureOutputDir(dir: string): void {
+function ensureOutputDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }
-
 /**
  * -----------------------------------------
  *  2. YAML Loading & Merging
  * -----------------------------------------
  */
-
 /**
  * Reads `.yml` / `.yaml` files from the given directory,
  * parses them, and returns an array of blueprint objects.
  */
-function loadYamlFiles(directory: string): Array<Record<string, any>> {
+function loadYamlFiles(directory) {
   const yamlFiles = fs.readdirSync(directory).filter((file) => file.endsWith(".yml") || file.endsWith(".yaml"));
-
-  const blueprints: Array<Record<string, any>> = [];
+  const blueprints = [];
   for (const file of yamlFiles) {
     const filePath = path.join(directory, file);
     try {
       const content = fs.readFileSync(filePath, "utf8");
-      const data = yaml.load(content) as Record<string, any>;
+      const data = yaml.load(content);
       if (data) {
         blueprints.push({ [file.replace(/\.(yml|yaml)$/, "")]: data });
       }
@@ -124,12 +70,11 @@ function loadYamlFiles(directory: string): Array<Record<string, any>> {
   }
   return blueprints;
 }
-
 /**
  * Merges an array of blueprint objects into a single `Blueprint`.
  */
-function mergeBlueprints(blueprints: Array<Record<string, any>>): Blueprint {
-  const merged: Record<string, any> = {};
+function mergeBlueprints(blueprints) {
+  const merged = {};
   for (const bp of blueprints) {
     for (const group in bp) {
       if (!merged[group]) {
@@ -140,26 +85,22 @@ function mergeBlueprints(blueprints: Array<Record<string, any>>): Blueprint {
   }
   return merged;
 }
-
 /**
  * -----------------------------------------
  *  3. Transformation Logic
  * -----------------------------------------
  */
-
 /**
  * Returns the text if `lang` is the default language, or an empty string otherwise.
  */
-function transformText(text: string, lang: string, defaultLang: string): string {
+function transformText(text, lang, defaultLang) {
   return lang === defaultLang ? text : "";
 }
-
 /**
  * Processes a node and returns a language-specific version.
  */
-function processNode(node: BlueprintNode, lang: string, defaultLang: string): any {
-  let result: any = {};
-
+function processNode(node, lang, defaultLang) {
+  let result = {};
   // Handle conditions
   if (node.conditions) {
     result.conditions = {};
@@ -167,7 +108,6 @@ function processNode(node: BlueprintNode, lang: string, defaultLang: string): an
       result.conditions[condKey] = transformText(condVal, lang, defaultLang);
     }
   }
-
   // Handle variants
   if (node.variants) {
     result.variants = {};
@@ -175,7 +115,6 @@ function processNode(node: BlueprintNode, lang: string, defaultLang: string): an
       result.variants[varKey] = transformText(varVal, lang, defaultLang);
     }
   }
-
   // Handle placeholders / parrotHolders
   if (node.placeholders) {
     result.placeholders = node.placeholders.replace(/\s/g, "").split(",");
@@ -190,31 +129,25 @@ function processNode(node: BlueprintNode, lang: string, defaultLang: string): an
     // No placeholders or parrotHolders => likely a simple string
     result = transformText(node.value ?? "", lang, defaultLang);
   }
-
   return result;
 }
-
 /**
  * -----------------------------------------
  *  4. Flattening Blueprint
  * -----------------------------------------
  */
-
 /**
  * Converts a merged `Blueprint` into a `FlattenedResult`
  * keyed by (group -> key) and separates them into Static/Dynamic.
  */
 let _allPlaceholders = {};
-
-function flattenBlueprint(blueprint: Blueprint, lang: string, defaultLang: string): FlattenedResult {
-  const processedResult: Record<string, Record<string, any>> = {};
-
+function flattenBlueprint(blueprint, lang, defaultLang) {
+  const processedResult = {};
   // Process each group
   for (const group in blueprint) {
     for (const key in blueprint[group]) {
-      const node: BlueprintNode = blueprint[group][key];
+      const node = blueprint[group][key];
       const transformed = processNode(node, lang, defaultLang);
-
       if (transformed !== null) {
         processedResult[group] = processedResult[group] || {};
         processedResult[group][key] = transformed;
@@ -223,16 +156,13 @@ function flattenBlueprint(blueprint: Blueprint, lang: string, defaultLang: strin
       }
     }
   }
-
   // Separate static vs dynamic
-  const dynamic: Record<string, Record<string, any>> = {};
-  const staticPart: Record<string, Record<string, any>> = {};
-
+  const dynamic = {};
+  const staticPart = {};
   for (const group in processedResult) {
     for (const key in processedResult[group]) {
       const item = processedResult[group][key];
       const hasPlaceholders = item?.placeholders || item?.parrotHolders;
-
       if (hasPlaceholders) {
         dynamic[group] = dynamic[group] || {};
         dynamic[group][key] = item;
@@ -242,47 +172,31 @@ function flattenBlueprint(blueprint: Blueprint, lang: string, defaultLang: strin
       }
     }
   }
-
   if (lang === defaultLang && Object.keys(dynamic)?.length) {
     // loop thro the dynamic
     Object.values(dynamic).forEach((groups) => {
-      Object.entries(groups).forEach(
-        ([key, node]: [
-          string,
-          {
-            value: string;
-            placeholders: string[];
-            parrotHolders: string[];
-            variants: { [key: string]: string };
-            conditions: { [key: string]: string };
-          }
-        ]) => {
-          if (node.placeholders) {
-            node.placeholders.forEach((phKey) => {
-              _allPlaceholders[phKey] = true;
-            });
-          }
+      Object.entries(groups).forEach(([key, node]) => {
+        if (node.placeholders) {
+          node.placeholders.forEach((phKey) => {
+            _allPlaceholders[phKey] = true;
+          });
         }
-      );
+      });
     });
   }
-
   return {
     Static: sortKeys(staticPart),
     Dynamic: sortKeys(dynamic),
   };
 }
-
 /**
  * Sorts the top-level keys of an object (by group, then subkeys).
  */
-function sortKeys(obj: Record<string, Record<string, any>>): Record<string, Record<string, any>> {
-  const sorted: Record<string, Record<string, any>> = {};
-
+function sortKeys(obj) {
+  const sorted = {};
   for (const group of Object.keys(obj).sort()) {
     const groupValues = obj[group];
-    const sortedGroup: Record<string, any> = {};
-
+    const sortedGroup = {};
     for (const key of Object.keys(groupValues).sort()) {
       sortedGroup[key] = groupValues[key];
     }
@@ -290,33 +204,19 @@ function sortKeys(obj: Record<string, Record<string, any>>): Record<string, Reco
   }
   return sorted;
 }
-
-/**
- * -----------------------------------------
- *  5. Existing Config Merge
- * -----------------------------------------
- */
-
-interface GeneratedConfig {
-  Static: Record<string, Record<string, any>>;
-  Dynamic: Record<string, Record<string, any>>;
-}
-
 /**
  * Merges an old config with a new config, preserving existing values
  * while removing keys not present in the new config.
  */
-function mergeConfigs(oldConfig: GeneratedConfig, newConfig: GeneratedConfig): GeneratedConfig {
-  const merged: GeneratedConfig = { Static: {}, Dynamic: {} };
-
-  for (const section of ["Static", "Dynamic"] as const) {
+function mergeConfigs(oldConfig, newConfig) {
+  const merged = { Static: {}, Dynamic: {} };
+  for (const section of ["Static", "Dynamic"]) {
     const currentNew = newConfig[section];
     if (currentNew) {
       for (const group in currentNew) {
         merged[section][group] = {};
         for (const key in currentNew[group]) {
           let node = currentNew[group][key];
-
           // If key exists in oldConfig, preserve or merge old values
           if (oldConfig && oldConfig[section] && oldConfig[section][group] && key in oldConfig[section][group]) {
             const oldNode = oldConfig[section][group][key];
@@ -329,14 +229,12 @@ function mergeConfigs(oldConfig: GeneratedConfig, newConfig: GeneratedConfig): G
       }
     }
   }
-
   return merged;
 }
-
 /**
  * Selectively merges node values if present in the old node.
  */
-function mergeNodeValues(newNode: any, oldNode: any): any {
+function mergeNodeValues(newNode, oldNode) {
   if (typeof oldNode !== "object" && typeof newNode !== "object") {
     return oldNode || newNode;
   }
@@ -359,13 +257,11 @@ function mergeNodeValues(newNode: any, oldNode: any): any {
   }
   return newNode;
 }
-
 /**
  * -----------------------------------------
  *  6. Type Definitions Generation
  * -----------------------------------------
  */
-
 /**
  * Generates a `Types.ts` file to define TypeScript interfaces
  * for static and dynamic keys (including JSDoc comments).
@@ -375,10 +271,8 @@ function generateTypes(blueprint) {
   let staticType = "";
   let dynamicType = "";
   const extraMapping = {};
-
   // Helper: convert comma-separated string to an array of trimmed strings.
   const toArray = (s) => (s ? s.split(",").map((x) => x.trim()) : []);
-
   for (const group in blueprint) {
     for (const key in blueprint[group]) {
       const node = blueprint[group][key];
@@ -386,7 +280,6 @@ function generateTypes(blueprint) {
       // Fixed keys from placeholders and generic keys from parrotHolders.
       const fixedKeys = toArray(placeholders);
       const genericKeys = toArray(parrotHolders);
-
       // Build JSDoc.
       let jsDoc = "  /**\n";
       if (desc) jsDoc += `   * ${desc}\n`;
@@ -403,10 +296,8 @@ function generateTypes(blueprint) {
         jsDoc += `   *\n   * Variant: ${variantList}\n`;
       }
       jsDoc += "   */\n";
-
       let isDynamic = false;
       let typeContent = "";
-
       // If there are fixed (placeholders) or generic (parrotHolders) keys, generate a dynamic signature.
       if (fixedKeys.length > 0 || genericKeys.length > 0) {
         isDynamic = true;
@@ -421,19 +312,16 @@ function generateTypes(blueprint) {
           }
           return `${k}: _ParrotStaticValue`;
         });
-
         // For generic keys (from parrotHolders), use generic parameters.
         const genericParamsObj = genericKeys.map((k) => `${k}: ${k}`);
         const paramObjParts = [...fixedParams, ...genericParamsObj];
         const paramObj = paramObjParts.join("; ");
         // Build generic type parameter list from genericKeys.
         const genericParams = genericKeys.length > 0 ? genericKeys.map((k) => `${k} extends ParrotKey`).join(", ") : "";
-
         // use the generi keys as parrot key
         extraMapping[key] = `  ${key}: { ${genericKeys.map((ph) => `${ph}: ParrotKey`).join(";")}${
           genericKeys.length > 0 && fixedKeys.length > 0 ? "; " : ""
         }${fixedParams.map((ph) => `${ph}`).join("; ")}};\n`;
-
         // Build the ExtraParams intersection only for generic keys.
         const extraParamsParts = genericKeys.map((k) => `ExtraParams<${k}>`);
         const extraParams = extraParamsParts.length > 0 ? extraParamsParts.join(" & ") : "{}";
@@ -447,7 +335,6 @@ function generateTypes(blueprint) {
       } else {
         typeContent = `  ${key}: any;\n`;
       }
-
       if (isDynamic) {
         dynamicType += jsDoc + typeContent;
       } else {
@@ -455,7 +342,6 @@ function generateTypes(blueprint) {
       }
     }
   }
-
   // Build ExtraParamsMapping.
   let extraMappingStr = "export interface ExtraParamsMapping {\n";
   for (const dynKey in extraMapping) {
@@ -464,7 +350,6 @@ function generateTypes(blueprint) {
     extraMappingStr += extraMapping[dynKey];
   }
   extraMappingStr += "}\n\n";
-
   output += extraMappingStr;
   output += `export type ExtraParams<K extends ParrotKey> = [K] extends [keyof ExtraParamsMapping] ? ExtraParamsMapping[K] : {};\n\n`;
   output += `type _ParrotStaticValue = string | number;\n\n`;
@@ -475,7 +360,7 @@ function generateTypes(blueprint) {
   return output;
 }
 // Generate index content
-function generateIndexContent(config): string {
+function generateIndexContent(config) {
   return `${config.languages.map((lang) => `import ${lang}Config from "./${lang}.json";`).join("\n")}
     const GetLanguageConfig = (lang: ${config.languages.map((lang) => `"${lang}"`).join(" | ")}) => {
        switch (lang) {
@@ -487,7 +372,6 @@ function generateIndexContent(config): string {
     export default GetLanguageConfig;
     `;
 }
-
 // Generate eze-lang.d.ts
 const ezeLangTypes = `import "eze-lang";
 import { ParrotConfig as PC, ParrotStatic as PS ,PlaceholderKey PK} from "./Parrot.Types";
@@ -498,71 +382,59 @@ declare module "eze-lang" {
   export interface PlaceholderKey extends PK {}
 }
 `;
-
 /**
  * -----------------------------------------
  *  7. Main Process
  * -----------------------------------------
  */
-
-async function main(): Promise<void> {
+async function main() {
   try {
     // Load config and ensure output directory
     const config = await loadUserConfig();
     ensureOutputDir(config.outputDir);
-
     // 1) Load and merge YAML blueprints
     const yamlDir = path.join(config.outputDir, "yml");
     const blueprints = loadYamlFiles(yamlDir);
     const mergedBlueprint = mergeBlueprints(blueprints);
-
     // 2) Generate JSON files for each language
     for (const lang of config.languages) {
       const flattened = flattenBlueprint(mergedBlueprint, lang, config.defaultLanguage);
       const outputPath = path.join(config.outputDir, `${lang}.json`);
-
-      let finalConfig: GeneratedConfig = flattened;
+      let finalConfig = flattened;
       if (fs.existsSync(outputPath)) {
         try {
           const existingData = fs.readFileSync(outputPath, "utf8");
-          const oldConfig = JSON.parse(existingData) as GeneratedConfig;
+          const oldConfig = JSON.parse(existingData);
           finalConfig = mergeConfigs(oldConfig, flattened);
         } catch (err) {
           console.error(`\x1b[31mError reading existing config at "${outputPath}":\x1b[0m`, err);
         }
       }
-
       fs.writeFileSync(outputPath, JSON.stringify(finalConfig, null, 2), "utf8");
       console.log(`Generated: ${outputPath}`);
     }
-
     // 3) Generate `Types.ts` file
     const typesContent = generateTypes(mergedBlueprint);
     // const typesPath = path.join(config.outputDir, "Parrot.Types.ts");
     const typesPath = path.join("Parrot.Types.ts");
     fs.writeFileSync(typesPath, typesContent, "utf8");
-
     const indexContent = generateIndexContent(config);
     const indexPath = path.join(config.outputDir, "index.ts");
     fs.writeFileSync(indexPath, indexContent);
-
     // 4) Generate eze-lang.d.ts
     // const ezeLangPath = path.join(config.outputDir, "eze-lang.d.ts");
     // fs.writeFileSync(ezeLangPath, ezeLangTypes, "utf8");
-
     // 4) Format output directory with Prettier (optional)
     try {
       execSync(`npx prettier --write ${config.outputDir} --ignore-path ${config.outputDir}/yml`, { stdio: "inherit" });
-    } catch (err: any) {
+    } catch (err) {
       console.warn("Prettier formatting skipped or failed:", err.message);
     }
-
     console.log("Generated Types.ts");
   } catch (err) {
     console.error("\x1b[31mError during generation process:\x1b[0m", err);
     process.exit(1);
   }
 }
-
 // Execute main function
 void main();
