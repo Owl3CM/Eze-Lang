@@ -1,6 +1,6 @@
 {
   "name": "eze-lang",
-  "version": "0.0.12",
+  "version": "0.0.14",
   "description": "eze-lang",
   "main": "dist/index.js",
   "source": "lib/index.ts",
