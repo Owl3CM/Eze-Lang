@@ -53,9 +53,6 @@ export const DefaultVariants = {
   },
 };
 
-type DynamicKeys = keyof ParrotDynamic;
-type StaticKeys = keyof ParrotStatic;
-
 export function SetLanguage(config: {
   Static: {
     [key: string]: {
@@ -90,14 +87,34 @@ export function SetLanguage(config: {
         }
       ]) => {
         if (!node.value) node.value = "";
+
+        let applyParrotHolders =
+          node.parrotHolders && node.parrotHolders.length > 0
+            ? (params: any) => {
+                node.parrotHolders.forEach((k) => {
+                  // @ts-ignore
+                  const val = Parrot[params[k]];
+                  params[k] = typeof val === "function" ? val(params) : val;
+                });
+                return params;
+              }
+            : (params: any) => params;
+
         if (node.variants) {
           // @ts-ignore
-          Parrot[key] = (params: any) => {
-            const found = node.variants[params[node.placeholders[0]] ?? _defaultVariants[node.placeholders[0]]];
-            return interpolate(found ?? node.value, params);
-          };
+          if (node.placeholders) {
+            // @ts-ignore
+            Parrot[key] = (params: any) => {
+              params = applyParrotHolders(params);
+              const found = node.variants[params[node.placeholders[0]] ?? _defaultVariants[node.placeholders[0]]];
+              return interpolate(found ?? node.value, params);
+            };
+          } else {
+            // @ts-ignore
+            Parrot[key] = (params: any) => node.variants[params[node.placeholders[0]] ?? _defaultVariants[node.placeholders[0]]] ?? node.value;
+          }
         } else if (node.conditions) {
-          let conditionsFunctions = [] as any[];
+          const conditionsFunctions = [] as any[];
           Object.entries(node.conditions).forEach(([condition, template]) => {
             try {
               conditionsFunctions.push(
@@ -109,27 +126,19 @@ export function SetLanguage(config: {
           });
           // @ts-ignore
           Parrot[key] = (params: any) => {
+            params = applyParrotHolders(params);
             for (const func of conditionsFunctions) {
-              const f = func(params);
-              if (f) return interpolate(f, params);
+              const condValue = func(params);
+              if (condValue) return interpolate(condValue, params);
             }
             return interpolate(node.value, params);
           };
         } else if (node.parrotHolders) {
           // @ts-ignore
-          Parrot[key] = (params: any) => {
-            node.parrotHolders.forEach((k) => {
-              // @ts-ignore
-              const val = Parrot[params[k]];
-              params[k] = typeof val === "function" ? val(params) : val;
-            });
-            return interpolate(node.value, params);
-          };
+          Parrot[key] = (params: any) => interpolate(node.value, applyParrotHolders(params));
         } else {
           // @ts-ignore
-          Parrot[key] = (params: any) => {
-            return interpolate(node.value, params);
-          };
+          Parrot[key] = (params: any) => interpolate(node.value, params);
         }
       }
     );
@@ -157,19 +166,10 @@ function interpolate(template: string, params: { [key: string]: string | number 
   });
 }
 
-type ParrotTextProps<K extends ParrotKey> = K extends DynamicKeys
-  ? {
-      /** The Parrot key to render. */
-      k: K;
-    } & Parameters<ParrotDynamic[K]>[0] // The parameter object from the dynamic function
-  : {
-      /** The Parrot key to render. */
-      k: K;
-    };
+type DynamicKeys = keyof ParrotDynamic;
+type StaticKeys = keyof ParrotStatic;
 
-/**
- * A single component that renders either static or dynamic Parrot values.
- */
+type ParrotTextProps<K extends ParrotKey> = K extends DynamicKeys ? { k: K } & Parameters<ParrotDynamic[K]>[0] : { k: K };
 
 export function ParrotMixedComponent<K extends ParrotKey>(props: ParrotTextProps<K>) {
   const { k, ...rest } = props as any;
