@@ -64,10 +64,17 @@ export function SetLanguage(config: {
   };
   Dynamic: GroupObject;
 }): ParrotConfig {
-  let parrot = {} as any;
+  Object.keys(Parrot).forEach((key) => {
+    //@ts-ignore
+    delete Parrot[key];
+  });
 
   Object.values(config.Static).forEach((groups) => {
-    parrot = { ...parrot, ...groups };
+    // parrot = { ...parrot, ...groups };
+    Object.entries(groups).forEach(([key, node]: any) => {
+      // @ts-ignore
+      Parrot[key] = node;
+    });
   });
 
   Object.values(config.Dynamic).forEach((groups: Group) => {
@@ -84,7 +91,8 @@ export function SetLanguage(config: {
       ]) => {
         if (!node.value) node.value = "";
         if (node.variants) {
-          parrot[key] = (params: any) => {
+          // @ts-ignore
+          Parrot[key] = (params: any) => {
             const found = node.variants[params[node.placeholders[0]] ?? _defaultVariants[node.placeholders[0]]];
             return interpolate(found ?? node.value, params);
           };
@@ -99,7 +107,8 @@ export function SetLanguage(config: {
               console.error(e);
             }
           });
-          parrot[key] = (params: any) => {
+          // @ts-ignore
+          Parrot[key] = (params: any) => {
             for (const func of conditionsFunctions) {
               const f = func(params);
               if (f) return interpolate(f, params);
@@ -107,23 +116,23 @@ export function SetLanguage(config: {
             return interpolate(node.value, params);
           };
         } else if (node.parrotHolders) {
-          parrot[key] = (params: any) => {
+          // @ts-ignore
+          Parrot[key] = (params: any) => {
             node.parrotHolders.forEach((k) => {
-              const val = parrot[params[k]];
+              // @ts-ignore
+              const val = Parrot[params[k]];
               params[k] = typeof val === "function" ? val(params) : val;
             });
             return interpolate(node.value, params);
           };
-        } else
-          parrot[key] = (params: any) => {
+        } else {
+          // @ts-ignore
+          Parrot[key] = (params: any) => {
             return interpolate(node.value, params);
           };
+        }
       }
     );
-  });
-  Object.keys(Parrot).forEach((key) => {
-    //@ts-ignore
-    Parrot[key] = parrot[key];
   });
   return Parrot;
 }
